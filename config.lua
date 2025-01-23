@@ -60,8 +60,8 @@ CONFIG.allow_passenger_view = false
 -- radar remote and control the radar and plate reader for themself and the driver.
 CONFIG.allow_passenger_control = false
 
--- Set this to true if you use Sonoran CAD with the WraithV2 plugin
-CONFIG.use_sonorancad = false
+-- Set this to true if you use Imperial CAD with the WraithV2 plugin
+CONFIG.use_imperialcad = false
 
 -- Sets the defaults of all keybinds
 -- These keybinds can be changed by each person in their GTA Settings->Keybinds->FiveM
