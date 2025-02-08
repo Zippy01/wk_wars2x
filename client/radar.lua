@@ -50,20 +50,6 @@ local function RegisterKeyBinds()
 	if (utils.isResourceNameValid()) then
 		utils.log("Registering radar commands and key binds.")
 
-		RegisterKeyMapping("radar_remote", "Open Remote Control", "keyboard", config.keyDefaults.remote_control)
-
-		RegisterKeyMapping("radar_fr_ant", "Front Antenna Lock/Unlock", "keyboard", config.keyDefaults.front_lock)
-
-		RegisterKeyMapping("radar_bk_ant", "Rear Antenna Lock/Unlock", "keyboard", config.keyDefaults.rear_lock)
-
-		RegisterKeyMapping("radar_fr_cam", "Front Plate Reader Lock/Unlock", "keyboard",
-			config.keyDefaults.plate_front_lock)
-
-		RegisterKeyMapping("radar_bk_cam", "Rear Plate Reader Lock/Unlock", "keyboard",
-			config.keyDefaults.plate_rear_lock)
-
-		RegisterKeyMapping("radar_key_lock", "Toggle Keybind Lock", "keyboard", config.keyDefaults.key_lock)
-
 		-- Locks speed from front antenna
 		RegisterCommand("radar_fr_ant", function()
 			if (not RADAR:GetKeyLockState() and PLY:CanControlRadar()) then
@@ -127,6 +113,22 @@ local function RegisterKeyBinds()
 			utils.notify("Radar data deleted, please immediately restart your game without opening the radar's remote.")
 		end, false)
 		TriggerEvent("chat:addSuggestion", "/reset_radar_data", "Resets the KVP data stored for the wk_wars2x resource.")
+
+
+
+		RegisterKeyMapping("radar_remote", "Open Remote Control", "keyboard", config.keyDefaults.remote_control)
+
+		RegisterKeyMapping("radar_fr_ant", "Front Antenna Lock/Unlock", "keyboard", config.keyDefaults.front_lock)
+
+		RegisterKeyMapping("radar_bk_ant", "Rear Antenna Lock/Unlock", "keyboard", config.keyDefaults.rear_lock)
+
+		RegisterKeyMapping("radar_fr_cam", "Front Plate Reader Lock/Unlock", "keyboard",
+			config.keyDefaults.plate_front_lock)
+
+		RegisterKeyMapping("radar_bk_cam", "Rear Plate Reader Lock/Unlock", "keyboard",
+			config.keyDefaults.plate_rear_lock)
+
+		RegisterKeyMapping("radar_key_lock", "Toggle Keybind Lock", "keyboard", config.keyDefaults.key_lock)
 	else
 		utils.log(
 			"ERROR: Resource name is not wk_wars2x. Key binds will not be registered for compatibility reasons. Contact the server owner and ask them to change the resource name back to wk_wars2x")
