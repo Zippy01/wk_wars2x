@@ -72,7 +72,7 @@ end)
 
 -- Returns if the current vehicle fits the validity requirements for the radar to work
 function PLY:VehicleStateValid()
-	return DoesEntityExist(self.veh) and self.veh > 0 and self.vehClassValid
+	return self.veh ~= false and self.veh and DoesEntityExist(self.veh) and self.vehClassValid
 end
 
 -- Used to check if the player is in a position where the radar should be allowed operation
