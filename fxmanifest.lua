@@ -28,7 +28,7 @@
 	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 	SOFTWARE.
 
----------------------------------------------------------------------------------------]]--
+---------------------------------------------------------------------------------------]] --
 
 -- Define the FX Server version and game type
 fx_version "cerulean"
@@ -37,11 +37,37 @@ game "gta5"
 -- Define the resource metadata
 name "Wraith ARS 2X"
 description "Police radar and plate reader system for FiveM"
-author "WolfKnight"
+use_experimental_fxv2_oal 'yes'
+nui_callback_strict_mode 'true'
+lua54 'yes'
+
+author "WolfKnight, modified to work with Imperial CAD."
 version "1.3.1"
 
--- Include the files
+ui_page "nui/radar.html"
+
+shared_script { "@ox_lib/init.lua" }
+
+client_scripts {
+	"client/radar.lua",
+	"client/plate_reader.lua",
+	"client/sync.lua"
+}
+
+
+server_scripts {
+	"server/exports.lua",
+	"server/plate_reader.lua",
+	"server/sync.lua"
+}
+
+
+serer_export "TogglePlateLock"
+
 files {
+	"config.lua",
+	"modules/*.lua",
+
 	"nui/radar.html",
 	"nui/radar.css",
 	"nui/radar.js",
@@ -51,20 +77,3 @@ files {
 	"nui/fonts/Segment7Standard.otf",
 	"nui/sounds/*.ogg"
 }
-
--- Set the NUI page
-ui_page "nui/radar.html"
-
--- Run the server scripts
-server_script "sv_version_check.lua"
-server_script "sv_exports.lua"
-server_script "sv_sync.lua"
-server_export "TogglePlateLock"
-
--- Run the client scripts
-client_script "config.lua"
-client_script "cl_utils.lua"
-client_script "cl_player.lua"
-client_script "cl_radar.lua"
-client_script "cl_plate_reader.lua"
-client_script "cl_sync.lua"
