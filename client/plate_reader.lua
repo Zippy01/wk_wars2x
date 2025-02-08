@@ -34,6 +34,15 @@ local PLY = require('modules.player')
 local utils = require('modules.utils')
 local config = lib.load('config')
 
+local GetVehicleClass = GetVehicleClass
+local GetOffsetFromEntityInWorldCoords = GetOffsetFromEntityInWorldCoords
+local DoesEntityExist = DoesEntityExist
+local IsEntityAVehicle = IsEntityAVehicle
+local GetEntityHeading = GetEntityHeading
+local GetVehicleNumberPlateText = GetVehicleNumberPlateText
+local GetVehicleNumberPlateTextIndex = GetVehicleNumberPlateTextIndex
+local IsVehiclePreviouslyOwnedByPlayer = IsVehiclePreviouslyOwnedByPlayer
+local IsPauseMenuActive = IsPauseMenuActive
 
 READER = {}
 
@@ -54,6 +63,9 @@ READER.vars =
 
 	-- The BOLO plate
 	boloPlate = "",
+
+	lastScannedFrontPlate = {},
+	lastScannedRearPlate = {},
 
 	-- Cameras, this table contains all of the data needed for operation of the front and rear plate reader
 	cams = {
@@ -235,15 +247,45 @@ end)
 --[[----------------------------------------------------------------------------------
 	Plate reader threads
 ----------------------------------------------------------------------------------]] --
+CreateThread(function()
+	while true do
+		local vehicle = cache.vehicle
+		local vehicleClass = GetVehicleClass(vehicle) == 18
+
+		if vehicle and vehicleClass then
+			if READER:CanPerformMainTask() then
+				READER:Main()
+			end
+
+			READER:RunDisplayValidationCheck()
+			Wait(500)
+		else
+			Wait(1000)
+		end
+	end
+end)
+
+local function isPlateAlreadyScanned(plate, cam)
+	if cam == "front" then
+		return READER.vars.lastScannedFrontPlate[plate]
+	else
+		return READER.vars.lastScannedRearPlate[plate]
+	end
+end
+
+local function scanPlate(plate, cam)
+	local res = lib.callback.await("wk:scanPlate", false, plate, cam)
+	if res and res.info then
+		-- Do something.
+	end
+end
+
 -- This is the main function that runs and scans all vehicles in front and behind the patrol vehicle
 function READER:Main()
 	-- Check that the system can actually run
 	if (PLY:VehicleStateValid() and self:CanPerformMainTask()) then
 		-- Loop through front (1) and rear (-1)
 		for i = 1, -1, -2 do
-			-- Get the world position of the player's vehicle
-			local pos = GetEntityCoords(PLY.veh)
-
 			-- Get a start position 5m in front/behind the player's vehicle
 			local start = GetOffsetFromEntityInWorldCoords(PLY.veh, 0.0, (5.0 * i), 0.0)
 
@@ -293,24 +335,20 @@ function READER:Main()
 						SendNUIMessage({ _type = "changePlate", cam = cam, plate = plate, index = index })
 
 						-- If we use Imperial CAD, reduce the plate events to just player's vehicle, otherwise life as normal
-						if ((config.use_imperialcad and (utils:IsPlayerInVeh(veh) or IsVehiclePreviouslyOwnedByPlayer(veh)) and GetVehicleClass(veh) ~= 18) or not config.use_imperialcad) then
-							-- Trigger the event so developers can hook into the scanner every time a plate is scanned
-							TriggerServerEvent("wk:onPlateScanned", cam, plate, index)
+						local isPlateScanned = isPlateAlreadyScanned(plate, cam)
+
+						if isPlateScanned then return end
+						if (utils.isPlayerInVeh(veh) or IsVehiclePreviouslyOwnedByPlayer(veh)) and GetVehicleClass(veh) ~= 18 then
+							scanPlate(plate, cam)
 						end
 					end
 				end
 			end
 		end
+	else
+		print("Plate reader cannot perform main task")
 	end
 end
-
--- Main thread
-
-lib.onCache('vehicle', function(value)
-	if DoesEntityExist(value) and IsEntityAVehicle(value) and GetVehicleClass(value) ~= 18 then
-		READER:Main()
-	end
-end)
 
 -- This function is pretty much straight from WraithRS, it does the job so I didn't see the point in not
 -- using it. Hides the radar UI when certain criteria is met, e.g. in pause menu or stepped out ot the
@@ -319,21 +357,10 @@ function READER:RunDisplayValidationCheck()
 	if (((not PLY.veh or (PLY.veh > 0 and not PLY.vehClassValid)) and self:GetDisplayState() and not self:GetDisplayHidden()) or IsPauseMenuActive() and self:GetDisplayState()) then
 		self:SetDisplayHidden(true)
 		SendNUIMessage({ _type = "setReaderDisplayState", state = false })
+		return false
 	elseif (PLY:CanViewRadar() and self:GetDisplayState() and self:GetDisplayHidden()) then
 		self:SetDisplayHidden(false)
 		SendNUIMessage({ _type = "setReaderDisplayState", state = true })
+		return true
 	end
 end
-
--- Runs the display validation check for the radar
-CreateThread(function()
-	Wait(100)
-
-	while true do
-		-- Run the check
-		READER:RunDisplayValidationCheck()
-
-		-- Wait half a second
-		Wait(500)
-	end
-end)
