@@ -274,11 +274,12 @@ local function isPlateAlreadyScanned(plate, cam)
 end
 
 local function scanPlate(plate, cam)
-	local res = lib.callback.await("wk:scanPlate", false, plate, cam)
-	if res and res.info then
-		-- Do something.
+	local res = lib.callback.await("wk:scanPlate", false, plate)
+	if not res or not res.info then
+		return
 	end
 end
+
 
 -- This is the main function that runs and scans all vehicles in front and behind the patrol vehicle
 function READER:Main()
