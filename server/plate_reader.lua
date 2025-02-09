@@ -108,7 +108,7 @@ lib.callback.register("wk:scanPlate", function(source, plate)
     end
 
     local body = {
-        community_id = commId,
+        communityId = commId,
         plate = plate
     }
 
