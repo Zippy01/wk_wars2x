@@ -247,6 +247,8 @@ end)
 --[[----------------------------------------------------------------------------------
 	Plate reader threads
 ----------------------------------------------------------------------------------]] --
+
+--- Could probably refactor to use onCache instead of a thread.
 CreateThread(function()
 	while true do
 		local vehicle = cache.vehicle
