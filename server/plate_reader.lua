@@ -31,10 +31,10 @@ local url = "https://imperialcad.app/api/1.1/wf/checkplate"
 assert(commId ~= "", "imperial_community_id is not set as a valid convar")
 assert(apiKey ~= "", "imperialAPI is not set as a valid convar")
 
-local CACHE_DURATION_MS = 10 * 60 * 1000        -- 10 minutes
-local RATE_LIMIT_MS = 3000                      -- 5 seconds
-local CLEANUP_GRACE_PERIOD_MS = 1 * 60 * 1000   -- 15 minutes
-local CACHE_CLEANUP_INTERVAL_MS = 1 * 60 * 1000 -- 5 minutes
+local CACHE_DURATION_MS = 600000        -- 10 minutes
+local RATE_LIMIT_MS = 3000              -- 3 seconds
+local CLEANUP_GRACE_PERIOD_MS = 900000  -- 15 minutes
+local CACHE_CLEANUP_INTERVAL_MS = 60000 -- 1 minute
 
 ---Validates if a plate string meets requirements
 ---@param plate string The plate to validate
@@ -156,19 +156,24 @@ end)
 
 local function cleanupCache()
     local currentTime = GetGameTimer()
+
     for plate, data in pairs(platesCache) do
         local expires = data.expires and data.expires or 0
         local gracePeriod = expires + CLEANUP_GRACE_PERIOD_MS
+        lib.print.info(("Plate %s expires at %s (grace period: %s)"):format(plate, expires, gracePeriod))
+
         if gracePeriod <= currentTime then
             platesCache[plate] = nil
-            lib.print.debug(("Cleaned up cached data for plate %s"):format(plate))
+            lib.print.info(("Cleaned up cached data for plate %s"):format(plate))
         end
     end
 end
 
 CreateThread(function()
+    lib.print.info("Starting cache cleanup thread")
     while true do
         Wait(CACHE_CLEANUP_INTERVAL_MS)
         cleanupCache()
+        lib.print.info("Cleaning up cached data")
     end
 end)
