@@ -53,6 +53,8 @@ local PLY =
 }
 
 lib.onCache('vehicle', function(value)
+	lib.print.debug("Updating vehicle cache")
+	lib.print.debug("Vehicle: " .. tostring(value))
 	PLY.veh = value
 	PLY.vehClassValid = (value and GetVehicleClass(value) == 18) or false
 	PLY.inDriverSeat = value == -1 or false

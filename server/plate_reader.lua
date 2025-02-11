@@ -32,9 +32,9 @@ assert(commId ~= "", "imperial_community_id is not set as a valid convar")
 assert(apiKey ~= "", "imperialAPI is not set as a valid convar")
 
 local CACHE_DURATION_MS = 10 * 60 * 1000        -- 10 minutes
-local RATE_LIMIT_MS = 5000                      -- 5 seconds
-local CLEANUP_GRACE_PERIOD_MS = 15 * 60 * 1000  -- 15 minutes
-local CACHE_CLEANUP_INTERVAL_MS = 5 * 60 * 1000 -- 5 minutes
+local RATE_LIMIT_MS = 3000                      -- 5 seconds
+local CLEANUP_GRACE_PERIOD_MS = 1 * 60 * 1000   -- 15 minutes
+local CACHE_CLEANUP_INTERVAL_MS = 1 * 60 * 1000 -- 5 minutes
 
 ---Validates if a plate string meets requirements
 ---@param plate string The plate to validate
@@ -56,6 +56,8 @@ end
 ---@param plate string The plate to cache
 ---@param info PlateInfo The plate information to cache
 local function setCache(plate, info)
+    if not plate or not info then return end
+
     platesCache[plate] = {
         expires = GetGameTimer() + CACHE_DURATION_MS,
         info = info
@@ -66,16 +68,17 @@ end
 ---@param plate string The plate to get the cache for
 ---@return PlateInfo|nil cachedData The cached plate information or nil if not found
 local function getCache(plate)
-    if platesCache[plate] then
-        if platesCache[plate].expires > GetGameTimer() then
-            return platesCache[plate].info
-        end
+    if not plate then return nil end
 
-        local data = platesCache[plate]
+    local cache = platesCache[plate]
+    if not cache then return nil end
+
+    if cache.expires > GetGameTimer() then
+        return cache.info
+    else
         platesCache[plate] = nil
-        return data.info
+        return nil
     end
-    return nil
 end
 
 ---@class PlateResponse
@@ -98,6 +101,10 @@ end
 ---@param plate string The plate to scan
 ---@return PlateInfo|false response The plate info or false if error
 lib.callback.register("wk:scanPlate", function(source, plate)
+    if not source or not plate then return false end
+
+    lib.print.info(("Scanning plate %s for source %s"):format(plate, source))
+
     if not validatePlate(plate) then
         lib.print.error(("Invalid plate: %s"):format(plate))
         return false
@@ -107,28 +114,28 @@ lib.callback.register("wk:scanPlate", function(source, plate)
         return false
     end
 
-    local body = {
+    local cachedData = getCache(plate)
+
+    if cachedData then
+        lib.print.info(("Found cached data for plate %s"):format(plate))
+        return cachedData
+    end
+
+    applyRateLimit(source)
+
+    local bodyData = {
         communityId = commId,
         plate = plate
     }
 
-    applyRateLimit(source)
-
-    local cachedData = getCache(plate)
-
-    if cachedData then
-        return cachedData
-    end
-
-    local respCode, resultData, _, errorData = PerformHttpRequestAwait(url, 'POST', json.encode(body), headers)
-
+    lib.print.info(("Making API request for plate %s"):format(plate))
+    local respCode, resultData, respHeaders, errorData = PerformHttpRequestAwait(url, 'POST', json.encode(bodyData),
+        headers)
     if errorData then
         lib.print.error(("Imperial API returned an error: %s"):format(json.encode(errorData)))
-        return false
-    end
-
-    if respCode ~= 200 then
         lib.print.error(("Imperial API returned a non-200 response code: %s"):format(respCode))
+        lib.print.error(("Imperial API returned a non-200 response code: %s"):format(json.encode(respHeaders)))
+        lib.print.error(("Imperial API returned a non-200 response code: %s"):format(json.encode(resultData)))
         return false
     end
 
@@ -141,9 +148,9 @@ lib.callback.register("wk:scanPlate", function(source, plate)
     end
 
     local plateInfo = data.response
+    lib.print.info(("Successfully got plate info for %s"):format(plate))
 
     setCache(plate, plateInfo)
-
     return plateInfo
 end)
 
@@ -154,6 +161,7 @@ local function cleanupCache()
         local gracePeriod = expires + CLEANUP_GRACE_PERIOD_MS
         if gracePeriod <= currentTime then
             platesCache[plate] = nil
+            lib.print.debug(("Cleaned up cached data for plate %s"):format(plate))
         end
     end
 end

@@ -273,10 +273,68 @@ local function isPlateAlreadyScanned(plate, cam)
 	end
 end
 
-local function scanPlate(plate, cam)
+local function scanPlate(plate)
 	local res = lib.callback.await("wk:scanPlate", false, plate)
-	if not res or not res.info then
-		return
+	if not res then return end
+
+	if isPlateAlreadyScanned(plate) then return end
+
+	local basicInfo = ("~y~Plate Information~s~\n~b~Owner:~s~ %s\n~b~Plate:~s~ %s"):format(
+		res.owner,
+		res.plate
+	)
+
+	if res.business and res.business ~= "null" then
+		basicInfo = basicInfo .. ("\n~b~Business:~s~ %s"):format(res.business)
+	end
+
+	BeginTextCommandThefeedPost("STRING")
+	AddTextComponentSubstringPlayerName(basicInfo)
+	ThefeedNextPostBackgroundColor(200)
+	EndTextCommandThefeedPostMessagetext("CHAR_CALL911", "CHAR_CALL911", false, 4, "License Plate Reader",
+		"~b~Scan Results")
+	EndTextCommandThefeedPostTicker(true, false)
+	PlaySoundFrontend(-1, "ATM_WINDOW", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
+
+	local criticalWarnings = {}
+	local minorWarnings = {}
+
+	if res.stolen == "true" then
+		criticalWarnings[#criticalWarnings + 1] = "~r~⚠ VEHICLE REPORTED STOLEN~s~"
+	end
+	if res.owner_wanted == "true" then
+		criticalWarnings[#criticalWarnings + 1] = "~r~⚠ OWNER HAS WARRANTS~s~"
+	end
+
+	if res.insurance == "false" or res.insurance_status ~= "ACTIVE" then
+		minorWarnings[#minorWarnings + 1] = "~o~⚠ Insurance Invalid~s~"
+	end
+	if res.reg_status ~= "ACTIVE" then
+		minorWarnings[#minorWarnings + 1] = "~o~⚠ Registration Not Active~s~"
+	end
+	if res.owner_dl_status ~= "ACTIVE" then
+		minorWarnings[#minorWarnings + 1] = "~o~⚠ Owner License Invalid~s~"
+	end
+
+	if #criticalWarnings > 0 then
+		local warningMsg = "~r~CRITICAL WARNINGS:~s~\n" .. table.concat(criticalWarnings, "\n")
+		BeginTextCommandThefeedPost("STRING")
+		AddTextComponentSubstringPlayerName(warningMsg)
+		ThefeedNextPostBackgroundColor(6)
+		EndTextCommandThefeedPostMessagetext("CHAR_CALL911", "CHAR_CALL911", false, 4, "License Plate Reader", "~r~ALERT")
+		EndTextCommandThefeedPostTicker(true, false)
+		PlaySoundFrontend(-1, "CHALLENGE_UNLOCKED", "HUD_AWARDS", true)
+	end
+
+	if #minorWarnings > 0 then
+		local warningMsg = "~o~WARNINGS:~s~\n" .. table.concat(minorWarnings, "\n")
+		BeginTextCommandThefeedPost("STRING")
+		AddTextComponentSubstringPlayerName(warningMsg)
+		ThefeedNextPostBackgroundColor(200)
+		EndTextCommandThefeedPostMessagetext("CHAR_CALL911", "CHAR_CALL911", false, 4, "License Plate Reader",
+			"~o~Warning")
+		EndTextCommandThefeedPostTicker(true, false)
+		PlaySoundFrontend(-1, "ATM_WINDOW", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
 	end
 end
 
@@ -339,9 +397,11 @@ function READER:Main()
 						local isPlateScanned = isPlateAlreadyScanned(plate, cam)
 
 						if isPlateScanned then return end
-						if (utils.isPlayerInVeh(veh) or IsVehiclePreviouslyOwnedByPlayer(veh)) and GetVehicleClass(veh) ~= 18 then
-							scanPlate(plate, cam)
-						end
+
+						scanPlate(plate)
+						-- if (utils.isPlayerInVeh(veh) or IsVehiclePreviouslyOwnedByPlayer(veh)) and GetVehicleClass(veh) ~= 18 then
+						-- 	scanPlate(plate)
+						-- end
 					end
 				end
 			end
@@ -355,11 +415,14 @@ end
 -- using it. Hides the radar UI when certain criteria is met, e.g. in pause menu or stepped out ot the
 -- patrol vehicle
 function READER:RunDisplayValidationCheck()
+	lib.print.debug("Running display validation check")
 	if (((not PLY.veh or (PLY.veh > 0 and not PLY.vehClassValid)) and self:GetDisplayState() and not self:GetDisplayHidden()) or IsPauseMenuActive() and self:GetDisplayState()) then
+		lib.print.debug("Hiding plate reader display")
 		self:SetDisplayHidden(true)
 		SendNUIMessage({ _type = "setReaderDisplayState", state = false })
 		return false
 	elseif (PLY:CanViewRadar() and self:GetDisplayState() and self:GetDisplayHidden()) then
+		lib.print.debug("Showing plate reader display")
 		self:SetDisplayHidden(false)
 		SendNUIMessage({ _type = "setReaderDisplayState", state = true })
 		return true
