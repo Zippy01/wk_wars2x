@@ -273,75 +273,112 @@ local function isPlateAlreadyScanned(plate, cam)
 	end
 end
 
+---@param title string The title of the notification
+---@param description string The description text
+---@param type 'success'|'error'|'warning'|'inform' The notification type
+---@param icon string The icon name to display
+---@param duration? number Optional duration in ms (defaults to 5000)
+local function plateNotify(id, title, description, type, icon, duration)
+	lib.notify({
+		id = id,
+		title = title,
+		description = description,
+		type = type,
+		position = 'center-left',
+		duration = duration or 5000,
+		style = {
+			backgroundColor = '#1a1a1a',
+			color = '#ffffff',
+			borderRadius = '4px',
+			border = '1px solid rgba(255,255,255,0.1)',
+			padding = '12px',
+			boxShadow = '0 2px 4px rgba(0,0,0,0.2)',
+			width = '300px',
+			['&.description'] = {
+				['padding-top'] = '12px',
+				['padding-bottom'] = '8px',
+				['font-size'] = '1.1em'
+			}
+		},
+		icon = icon,
+		alignIcon = 'top',
+		iconColor = type == 'error' and '#ff3333' or
+			type == 'warning' and '#ffb347' or
+			type == 'inform' and '#3399ff',
+		iconAnimation = 'spin'
+	})
+end
+
+---Scans a plate and shows notifications for any issues found
+---@param plate string The license plate to scan
 local function scanPlate(plate)
+	if isPlateAlreadyScanned(plate) then return end
+
+	---@type PlateInfo
 	local res = lib.callback.await("wk:scanPlate", false, plate)
 	if not res then return end
 
-	if isPlateAlreadyScanned(plate) then return end
-
-	local basicInfo = ("~y~Plate Information~s~\n~b~Owner:~s~ %s\n~b~Plate:~s~ %s"):format(
-		res.owner,
-		res.plate
-	)
-
-	if res.business and res.business ~= "null" then
-		basicInfo = basicInfo .. ("\n~b~Business:~s~ %s"):format(res.business)
+	local hasWarnings = false
+	if res.stolen == "true" or res.owner_wanted == "true" then
+		hasWarnings = true
+		plateNotify(
+			("(%s1)"):format(plate),
+			'🚨 High Priority Alert',
+			("Owner: %s\n\n%s%s"):format(
+				res.owner,
+				res.stolen == "true" and "• Vehicle Reported Stolen\n" or "",
+				res.owner_wanted == "true" and "• Owner Has Active Warrant(s)" or ""
+			),
+			'error',
+			'handcuffs',
+			15000
+		)
 	end
-
-	BeginTextCommandThefeedPost("STRING")
-	AddTextComponentSubstringPlayerName(basicInfo)
-	ThefeedNextPostBackgroundColor(200)
-	EndTextCommandThefeedPostMessagetext("CHAR_CALL911", "CHAR_CALL911", false, 4, "License Plate Reader",
-		"~b~Scan Results")
-	EndTextCommandThefeedPostTicker(true, false)
-	PlaySoundFrontend(-1, "ATM_WINDOW", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
-
-	local criticalWarnings = {}
-	local minorWarnings = {}
-
-	if res.stolen == "true" then
-		criticalWarnings[#criticalWarnings + 1] = "~r~⚠ VEHICLE REPORTED STOLEN~s~"
+	if res.insurance_status ~= "ACTIVE" or res.reg_status ~= "ACTIVE" then
+		hasWarnings = true
+		plateNotify(
+			("(%s2)"):format(plate),
+			'📄 Documentation Status',
+			("Owner: %s\n\n%s%s"):format(
+				res.owner,
+				res.insurance_status ~= "ACTIVE" and "• Insurance Invalid\n" or "",
+				res.reg_status ~= "ACTIVE" and "• Registration Not Active" or ""
+			),
+			'warning',
+			'file-circle-xmark',
+			15000
+		)
 	end
-	if res.owner_wanted == "true" then
-		criticalWarnings[#criticalWarnings + 1] = "~r~⚠ OWNER HAS WARRANTS~s~"
+	if res.owner_dl_status ~= "ACTIVE" or res.business ~= "null" then
+		hasWarnings = true
+		plateNotify(
+			("(%s3)"):format(plate),
+			'👤 Owner Information',
+			("Owner: %s\n\n%s%s"):format(
+				res.owner,
+				res.owner_dl_status ~= "ACTIVE" and "• License Invalid\n" or "",
+				res.business ~= "null" and ("• Business: %s"):format(res.business) or ""
+			),
+			'warning',
+			'id-card',
+			15000
+		)
 	end
-
-	if res.insurance == "false" or res.insurance_status ~= "ACTIVE" then
-		minorWarnings[#minorWarnings + 1] = "~o~⚠ Insurance Invalid~s~"
-	end
-	if res.reg_status ~= "ACTIVE" then
-		minorWarnings[#minorWarnings + 1] = "~o~⚠ Registration Not Active~s~"
-	end
-	if res.owner_dl_status ~= "ACTIVE" then
-		minorWarnings[#minorWarnings + 1] = "~o~⚠ Owner License Invalid~s~"
-	end
-
-	if #criticalWarnings > 0 then
-		local warningMsg = "~r~CRITICAL WARNINGS:~s~\n" .. table.concat(criticalWarnings, "\n")
-		BeginTextCommandThefeedPost("STRING")
-		AddTextComponentSubstringPlayerName(warningMsg)
-		ThefeedNextPostBackgroundColor(6)
-		EndTextCommandThefeedPostMessagetext("CHAR_CALL911", "CHAR_CALL911", false, 4, "License Plate Reader", "~r~ALERT")
-		EndTextCommandThefeedPostTicker(true, false)
-		PlaySoundFrontend(-1, "CHALLENGE_UNLOCKED", "HUD_AWARDS", true)
-	end
-
-	if #minorWarnings > 0 then
-		local warningMsg = "~o~WARNINGS:~s~\n" .. table.concat(minorWarnings, "\n")
-		BeginTextCommandThefeedPost("STRING")
-		AddTextComponentSubstringPlayerName(warningMsg)
-		ThefeedNextPostBackgroundColor(200)
-		EndTextCommandThefeedPostMessagetext("CHAR_CALL911", "CHAR_CALL911", false, 4, "License Plate Reader",
-			"~o~Warning")
-		EndTextCommandThefeedPostTicker(true, false)
-		PlaySoundFrontend(-1, "ATM_WINDOW", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
+	if hasWarnings then
+		plateNotify(
+			("(%s4)"):format(plate),
+			'🚗 Vehicle Summary',
+			("Plate: %s\nOwner: %s"):format(res.plate, res.owner),
+			'inform',
+			'car',
+			15000
+		)
 	end
 end
 
 
 -- This is the main function that runs and scans all vehicles in front and behind the patrol vehicle
 function READER:Main()
-	-- Check that the system can actually run
 	if (PLY:VehicleStateValid() and self:CanPerformMainTask()) then
 		-- Loop through front (1) and rear (-1)
 		for i = 1, -1, -2 do
@@ -353,6 +390,10 @@ function READER:Main()
 
 			-- Run the ray trace to get a vehicle
 			local veh = utils.getVehicleInDirection(PLY.veh, start, offset)
+
+			if not veh then
+				goto continue -- Skip to next iteration instead of returning
+			end
 
 			-- Get the plate reader text for front/rear
 			local cam = self:GetCamFromNum(i)
@@ -405,6 +446,8 @@ function READER:Main()
 					end
 				end
 			end
+
+			::continue::
 		end
 	else
 		print("Plate reader cannot perform main task")
