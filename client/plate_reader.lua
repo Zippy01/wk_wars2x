@@ -260,6 +260,7 @@ CreateThread(function()
 			READER:RunDisplayValidationCheck()
 			Wait(500)
 		else
+			READER:RunDisplayValidationCheck()
 			Wait(1000)
 		end
 	end
@@ -440,6 +441,8 @@ function READER:Main()
 						if isPlateScanned then return end
 
 						scanPlate(plate)
+
+						---Put back after testing.
 						-- if (utils.isPlayerInVeh(veh) or IsVehiclePreviouslyOwnedByPlayer(veh)) and GetVehicleClass(veh) ~= 18 then
 						-- 	scanPlate(plate)
 						-- end
@@ -458,14 +461,11 @@ end
 -- using it. Hides the radar UI when certain criteria is met, e.g. in pause menu or stepped out ot the
 -- patrol vehicle
 function READER:RunDisplayValidationCheck()
-	lib.print.debug("Running display validation check")
 	if (((not PLY.veh or (PLY.veh > 0 and not PLY.vehClassValid)) and self:GetDisplayState() and not self:GetDisplayHidden()) or IsPauseMenuActive() and self:GetDisplayState()) then
-		lib.print.debug("Hiding plate reader display")
 		self:SetDisplayHidden(true)
 		SendNUIMessage({ _type = "setReaderDisplayState", state = false })
 		return false
 	elseif (PLY:CanViewRadar() and self:GetDisplayState() and self:GetDisplayHidden()) then
-		lib.print.debug("Showing plate reader display")
 		self:SetDisplayHidden(false)
 		SendNUIMessage({ _type = "setReaderDisplayState", state = true })
 		return true
