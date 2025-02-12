@@ -64,7 +64,7 @@ lib.onCache('seat', function(value)
 	PLY.inDriverSeat = value == -1 or false
 	PLY.inPassengerSeat = value == 0 or false
 	PLY.veh = cache.vehicle
-	PLY.vehClassValid = (PLY.veh and GetVehicleClass(PLY.veh) == 18) or false
+	PLY.vehClassValid = PLY.veh and GetVehicleClass(PLY.veh) == 18
 end)
 
 lib.onCache('ped', function(value)

@@ -249,24 +249,24 @@ end)
 ----------------------------------------------------------------------------------]] --
 
 --- Could probably refactor to use onCache instead of a thread.
-CreateThread(function()
-	while true do
-		local vehicle = cache.vehicle
-		local vehicleClass = GetVehicleClass(vehicle) == 18
+-- CreateThread(function()
+-- 	while true do
+-- 		local vehicle = cache.vehicle
+-- 		local vehicleClass = GetVehicleClass(vehicle) == 18
 
-		if vehicle and vehicleClass then
-			if READER:CanPerformMainTask() then
-				READER:Main()
-			end
+-- 		if vehicle and vehicleClass then
+-- 			if READER:CanPerformMainTask() then
+-- 				READER:Main()
+-- 			end
 
-			READER:RunDisplayValidationCheck()
-			Wait(500)
-		else
-			READER:RunDisplayValidationCheck()
-			Wait(1000)
-		end
-	end
-end)
+-- 			READER:RunDisplayValidationCheck()
+-- 			Wait(500)
+-- 		else
+-- 			READER:RunDisplayValidationCheck()
+-- 			Wait(1000)
+-- 		end
+-- 	end
+-- end)
 
 local function isPlateAlreadyScanned(plate, cam)
 	if cam == "front" then
@@ -459,17 +459,50 @@ function READER:Main()
 	end
 end
 
--- This function is pretty much straight from WraithRS, it does the job so I didn't see the point in not
--- using it. Hides the radar UI when certain criteria is met, e.g. in pause menu or stepped out ot the
--- patrol vehicle
-function READER:RunDisplayValidationCheck()
-	if (((not PLY.veh or (PLY.veh > 0 and not PLY.vehClassValid)) and self:GetDisplayState() and not self:GetDisplayHidden()) or IsPauseMenuActive() and self:GetDisplayState()) then
-		self:SetDisplayHidden(true)
+lib.onCache('vehicle', function(value)
+	local shouldHide = (not value or (value and GetVehicleClass(value) ~= 18)) and READER:GetDisplayState() and
+		not READER:GetDisplayHidden()
+
+	if shouldHide then
+		READER:SetDisplayHidden(true)
 		SendNUIMessage({ _type = "setReaderDisplayState", state = false })
-		return false
-	elseif (PLY:CanViewRadar() and self:GetDisplayState() and self:GetDisplayHidden()) then
-		self:SetDisplayHidden(false)
-		SendNUIMessage({ _type = "setReaderDisplayState", state = true })
-		return true
+		return
 	end
-end
+
+	if PLY:CanViewRadar() and READER:GetDisplayState() and READER:GetDisplayHidden() then
+		READER:SetDisplayHidden(false)
+		SendNUIMessage({ _type = "setReaderDisplayState", state = true })
+	end
+end)
+
+CreateThread(function()
+	while true do
+		local isPaused = IsPauseMenuActive() and READER:GetDisplayState()
+
+		if isPaused then
+			READER:SetDisplayHidden(true)
+			SendNUIMessage({ _type = "setReaderDisplayState", state = false })
+		end
+
+		Wait(1000)
+	end
+end)
+
+-- -- This function is pretty much straight from WraithRS, it does the job so I didn't see the point in not
+-- -- using it. Hides the radar UI when certain criteria is met, e.g. in pause menu or stepped out ot the
+-- -- patrol vehicle
+-- function READER:RunDisplayValidationCheck()
+-- 	local shouldHide = (not PLY.veh or (PLY.veh and not PLY.vehClassValid)) and self:GetDisplayState() and
+-- 		not self:GetDisplayHidden()
+-- 	local isPaused = IsPauseMenuActive() and self:GetDisplayState()
+
+-- 	if shouldHide or isPaused then
+-- 		self:SetDisplayHidden(true)
+-- 		SendNUIMessage({ _type = "setReaderDisplayState", state = false })
+-- 		return false
+-- 	elseif (PLY:CanViewRadar() and self:GetDisplayState() and self:GetDisplayHidden()) then
+-- 		self:SetDisplayHidden(false)
+-- 		SendNUIMessage({ _type = "setReaderDisplayState", state = true })
+-- 		return true
+-- 	end
+-- end
