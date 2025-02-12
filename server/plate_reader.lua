@@ -88,12 +88,12 @@ end
 ---@class PlateInfo
 ---@field owner string The registered owner's name
 ---@field plate string The license plate number
----@field stolen string Whether the vehicle is stolen ('true'/'false')
----@field insurance string Whether the vehicle is insured ('true'/'false')
----@field insurance_status string Current insurance status ('ACTIVE'/'EXPIRED'/etc)
----@field business string|'null' Associated business name if any
+---@field stolen boolean Whether the vehicle is stolen
+---@field insurance boolean Whether the vehicle is insured
+---@field insurance_status? string Current insurance status ('ACTIVE'/'EXPIRED'/etc)
+---@field business boolean If it is a vehicle reg
 ---@field reg_status string Current registration status ('ACTIVE'/'EXPIRED'/etc)
----@field owner_wanted string|'null' Any active warrants for the owner
+---@field owner_wanted boolean Any active warrants for the owner
 ---@field owner_dl_status string Driver's license status ('ACTIVE'/'SUSPENDED'/etc)
 
 ---Scans a license plate and returns vehicle/owner information
