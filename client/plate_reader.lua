@@ -337,14 +337,14 @@ local function scanPlate(plate)
 			15000
 		)
 	end
-	if res.insurance_status and res.insurance_status ~= "ACTIVE" or res.reg_status ~= "ACTIVE" then
+	if (res.insurance and res.insurance_status ~= "ACTIVE") or res.reg_status ~= "ACTIVE" then
 		hasWarnings = true
 		plateNotify(
 			("(%s2)"):format(plate),
 			'📄 Documentation Status',
 			("Owner: %s\n\n%s%s"):format(
 				res.owner,
-				res.insurance_status ~= "ACTIVE" and "• Insurance Invalid\n" or "",
+				res.insurance and res.insurance_status ~= "ACTIVE" and "• Insurance Invalid\n" or "",
 				res.reg_status ~= "ACTIVE" and "• Registration Not Active" or ""
 			),
 			'warning',
@@ -360,7 +360,7 @@ local function scanPlate(plate)
 			("Owner: %s\n\n%s%s"):format(
 				res.owner,
 				res.owner_dl_status ~= "ACTIVE" and "• License Invalid\n" or "",
-				res.business and ("• Business: %s"):format(res.business) or ""
+				res.business and ("• Commerical Vehicle: %s"):format(res.business) or ""
 			),
 			'warning',
 			'id-card',
