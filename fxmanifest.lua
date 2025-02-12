@@ -54,15 +54,13 @@ client_scripts {
 	"client/sync.lua"
 }
 
-
 server_scripts {
 	"server/exports.lua",
 	"server/plate_reader.lua",
 	"server/sync.lua"
 }
 
-
-serer_export "TogglePlateLock"
+server_export "TogglePlateLock"
 
 files {
 	"config.lua",
