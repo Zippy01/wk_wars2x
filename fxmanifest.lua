@@ -77,3 +77,7 @@ files {
 	"nui/fonts/Segment7Standard.otf",
 	"nui/sounds/*.ogg"
 }
+
+dependency {
+	'ox_lib'
+}
