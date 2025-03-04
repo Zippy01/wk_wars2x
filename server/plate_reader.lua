@@ -103,8 +103,6 @@ end
 lib.callback.register("wk:scanPlate", function(source, plate)
     if not source or not plate then return false end
 
-    lib.print.info(("Scanning plate %s for source %s"):format(plate, source))
-
     if not validatePlate(plate) then
         lib.print.error(("Invalid plate: %s"):format(plate))
         return false
@@ -116,10 +114,7 @@ lib.callback.register("wk:scanPlate", function(source, plate)
 
     local cachedData = getCache(plate)
 
-    if cachedData then
-        lib.print.info(("Found cached data for plate %s"):format(plate))
-        return cachedData
-    end
+    if cachedData then return cachedData end
 
     applyRateLimit(source)
 
@@ -131,7 +126,12 @@ lib.callback.register("wk:scanPlate", function(source, plate)
     lib.print.info(("Making API request for plate %s"):format(plate))
     local respCode, resultData, respHeaders, errorData = PerformHttpRequestAwait(url, 'POST', json.encode(bodyData),
         headers)
-    if errorData then
+
+    if respCode == 404 or respCode == 400 then
+        lib.print.warn(("Plate is not found on CAD: %s"):format(plate))
+        return false
+    end
+    if errorData or not resultData then
         lib.print.error(("Imperial API returned an error: %s"):format(json.encode(errorData)))
         lib.print.error(("Imperial API returned a non-200 response code: %s"):format(respCode))
         lib.print.error(("Imperial API returned a non-200 response code: %s"):format(json.encode(respHeaders)))
@@ -148,7 +148,6 @@ lib.callback.register("wk:scanPlate", function(source, plate)
     end
 
     local plateInfo = data.response
-    lib.print.info(("Successfully got plate info for %s"):format(plate))
 
     setCache(plate, plateInfo)
     return plateInfo
@@ -160,20 +159,16 @@ local function cleanupCache()
     for plate, data in pairs(platesCache) do
         local expires = data.expires and data.expires or 0
         local gracePeriod = expires + CLEANUP_GRACE_PERIOD_MS
-        lib.print.info(("Plate %s expires at %s (grace period: %s)"):format(plate, expires, gracePeriod))
 
         if gracePeriod <= currentTime then
             platesCache[plate] = nil
-            lib.print.info(("Cleaned up cached data for plate %s"):format(plate))
         end
     end
 end
 
 CreateThread(function()
-    lib.print.info("Starting cache cleanup thread")
     while true do
         Wait(CACHE_CLEANUP_INTERVAL_MS)
         cleanupCache()
-        lib.print.info("Cleaning up cached data")
     end
 end)

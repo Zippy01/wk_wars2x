@@ -47,7 +47,7 @@ return {
 	-- In-game first time quick start video
 	-- When enabled, the player will be asked if they'd like to view the quick start video the first time they
 	-- open the remote.
-	allow_quick_start_video = true,
+	allow_quick_start_video = false,
 
 	-- Allow passenger view
 	-- When enabled, the front seat passenger will be able to view the radar and plate reader from their end.

@@ -61,7 +61,7 @@ local function RegisterKeyBinds()
 
 		RegisterCommand("radar_remote", function()
 			utils.log("radar_remote command triggered")
-			if (not RADAR:GetKeyLockState()) then
+			if not RADAR:GetKeyLockState() then
 				utils.log("Key lock state is false, opening remote")
 				RADAR:OpenRemote()
 			else
@@ -451,10 +451,8 @@ function RADAR:OpenRemote()
 			SendNUIMessage({ _type = "openRemote" })
 
 			SYNC:SetRemoteOpenState(true)
-
 			if (config.allow_quick_start_video) then
 				utils.log("Quick start video allowed, checking if new user")
-				-- Display the new user popup if we can
 				local show = GetResourceKvpInt("wk_wars2x_new_user")
 				utils.log("New user KVP value: " .. tostring(show))
 
@@ -462,6 +460,7 @@ function RADAR:OpenRemote()
 					utils.log("Showing new user popup")
 					SendNUIMessage({ _type = "showNewUser" })
 				end
+				SetResourceKvpInt("wk_wars2x_new_user", 1)
 			end
 
 			-- Bring focus to the NUI side
@@ -1863,12 +1862,18 @@ end)
 -- using it. Hides the radar UI when certain criteria is met, e.g. in pause menu or stepped out ot the
 -- patrol vehicle
 function RADAR:RunDisplayValidationCheck()
-	if (((not PLY.veh or (PLY.veh and not PLY.vehClassValid)) and self:GetDisplayState() and not self:GetDisplayHidden()) or IsPauseMenuActive() and self:GetDisplayState()) then
+	local shouldHide = (not PLY.veh or (PLY.veh and not PLY.vehClassValid)) and self:GetDisplayState() and
+		not self:GetDisplayHidden()
+	local isPaused = IsPauseMenuActive() and self:GetDisplayState()
+
+	if shouldHide or isPaused then
 		self:SetDisplayHidden(true)
 		SendNUIMessage({ _type = "setRadarDisplayState", state = false })
+		return false
 	elseif (PLY:CanViewRadar() and self:GetDisplayState() and self:GetDisplayHidden()) then
 		self:SetDisplayHidden(false)
 		SendNUIMessage({ _type = "setRadarDisplayState", state = true })
+		return true
 	end
 end
 
@@ -1877,11 +1882,19 @@ CreateThread(function()
 	Wait(100)
 
 	while true do
-		-- Run the check
-		RADAR:RunDisplayValidationCheck()
+		local vehicle = cache.vehicle
+		local vehicleClass = vehicle and GetVehicleClass(vehicle) == 18 or false
 
-		-- Wait half a second
-		Wait(500)
+		if vehicle and vehicleClass then
+			RADAR:RunDisplayValidationCheck()
+			Wait(500)
+		else
+			if RADAR:GetDisplayState() and not RADAR:GetDisplayHidden() then
+				RADAR:SetDisplayHidden(true)
+				SendNUIMessage({ _type = "setRadarDisplayState", state = false })
+			end
+			Wait(1000)
+		end
 	end
 end)
 

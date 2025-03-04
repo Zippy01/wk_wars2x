@@ -604,11 +604,15 @@ $.ajaxSetup({
 
 // This function is used to send data back through to the LUA side
 function sendData(name, data) {
-  $.post("https://wk_wars2x/" + name, JSON.stringify(data), function (datab) {
-    if (datab != "ok") {
-      console.log(datab);
+  $.post(
+    `https://${GetParentResourceName()}/${name}`,
+    JSON.stringify(data),
+    function (datab) {
+      if (datab != "ok") {
+        console.log(datab);
+      }
     }
-  });
+  );
 }
 
 // Sets the ui edited variable to the given state, this is used in the UI save system
