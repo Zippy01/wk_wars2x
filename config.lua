@@ -1,10 +1,8 @@
 --[[---------------------------------------------------------------------------------------
 
 	Wraith ARS 2X
-	Created by WolfKnight
-
-	For discussions, information on future updates, and more, join
-	my Discord: https://discord.gg/fD4e6WD
+	Created by WolfKnight 
+	(Maintained by Imperial Solutions and any other contributors.)
 
 	MIT License
 
@@ -60,6 +58,7 @@ return {
 
 	-- Set this to true if you use Imperial CAD with the WraithV2 plugin
 	use_imperialcad = true,
+	show_commercial = true, -- Show an alert for vehicle with commercial plate's?
 
 	-- Sets the defaults of all keybinds
 	-- These keybinds can be changed by each person in their GTA Settings->Keybinds->FiveM

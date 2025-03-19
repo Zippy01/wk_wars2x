@@ -267,7 +267,7 @@ local function plateNotify(id, title, description, type, icon, duration)
 		title = title,
 		description = description,
 		type = type,
-		position = 'center-left',
+		position = 'center-right',
 		duration = duration or 5000,
 		style = {
 			backgroundColor = '#1a1a1a',
@@ -288,77 +288,59 @@ local function plateNotify(id, title, description, type, icon, duration)
 		iconColor = type == 'error' and '#ff3333' or
 			type == 'warning' and '#ffb347' or
 			type == 'inform' and '#3399ff',
-		iconAnimation = 'spin'
+		iconAnimation = 'none'
 	})
 end
 
 ---Scans a plate and shows notifications for any issues found
 ---@param plate string The license plate to scan
 local function scanPlate(plate)
-	if not config.use_imperialcad then return end
-	if isPlateAlreadyScanned(plate) then return end
+    if not config.use_imperialcad then return end
+    if isPlateAlreadyScanned(plate) then return end
 
-	---@type PlateInfo
-	local res = lib.callback.await("wk:scanPlate", false, plate)
-	if not res then return end
+    local res = lib.callback.await("wk:scanPlate", false, plate)
+    if not res then return end
 
-	local hasWarnings = false
-	if res.stolen or res.owner_wanted then
-		hasWarnings = true
-		plateNotify(
-			("(%s1)"):format(plate),
-			'🚨 High Priority Alert',
-			("Owner: %s\n\n%s%s"):format(
-				res.owner,
-				res.stolen and "• Vehicle Reported Stolen\n" or "",
-				res.owner_wanted and "• Owner Has Active Warrant(s)" or ""
-			),
-			'error',
-			'handcuffs',
-			15000
-		)
-	end
-	if (res.insurance and res.insurance_status ~= "ACTIVE") or res.reg_status ~= "ACTIVE" then
-		hasWarnings = true
-		plateNotify(
-			("(%s2)"):format(plate),
-			'📄 Documentation Status',
-			("Owner: %s\n\n%s%s"):format(
-				res.owner,
-				res.insurance and res.insurance_status ~= "ACTIVE" and "• Insurance Invalid\n" or "",
-				res.reg_status ~= "ACTIVE" and "• Registration Not Active" or ""
-			),
-			'warning',
-			'file-circle-xmark',
-			15000
-		)
-	end
-	if res.owner_dl_status ~= "ACTIVE" or res.business then
-		hasWarnings = true
-		plateNotify(
-			("(%s3)"):format(plate),
-			'👤 Owner Information',
-			("Owner: %s\n\n%s%s"):format(
-				res.owner,
-				res.owner_dl_status ~= "ACTIVE" and "• License Invalid\n" or "",
-				res.business and ("• Commerical Vehicle: %s"):format(res.business) or ""
-			),
-			'warning',
-			'id-card',
-			15000
-		)
-	end
-	if hasWarnings then
-		plateNotify(
-			("(%s4)"):format(plate),
-			'🚗 Vehicle Summary',
-			("Plate: %s\nOwner: %s"):format(res.plate, res.owner),
-			'inform',
-			'car',
-			15000
-		)
-	end
+    local alerts = {}
+
+    if res.stolen then
+        table.insert(alerts, "• Vehicle Reported Stolen\n")
+    end
+    if res.owner_wanted then
+        table.insert(alerts, "• Owner Has Active Warrant(s)\n")
+    end
+    if res.insurance and res.insurance_status ~= "ACTIVE" then
+        table.insert(alerts, "• Insurance Invalid\n")
+    end
+    if res.reg_status ~= "ACTIVE" then
+        table.insert(alerts, "• Registration Not Active\n")
+    end
+    if res.owner_dl_status ~= "ACTIVE" then
+        table.insert(alerts, "• License Invalid\n")
+    end
+    if res.business and config.show_commercial then
+        table.insert(alerts, "• Commercial Vehicle: " .. res.business"\n")
+    end
+
+    local alertMessage
+    if #alerts > 4 then
+        alertMessage = "• Multiple flags. Please check vehicle details."
+    else
+        alertMessage = table.concat(alerts, "\n")
+    end
+
+    if #alerts > 0 then
+        plateNotify(
+            plate,
+            'ALPR HIT',
+            ("Plate: %s\nOwner: %s\n\n%s"):format(res.plate, res.owner, alertMessage),
+            'error',
+            'car',
+            15000
+        )
+    end
 end
+
 
 
 -- This is the main function that runs and scans all vehicles in front and behind the patrol vehicle
